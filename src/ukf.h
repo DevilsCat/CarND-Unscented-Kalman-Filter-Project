@@ -107,13 +107,22 @@ public:
   void UpdateRadar(MeasurementPackage meas_package);
 
 private:
-  void initializeSigmaPointsWeights_();
+  void initializeSigmaPointsWeights_(const int& n_aug);
 
   void GenerateAugmentedSigmaPoints_(MatrixXd& Xsig);
 
   void PredictSigmaPoints_(const MatrixXd& Xsig_aug, const float& delta_t);
 
   void PredictMeanAndCovirance_();
+
+  void PredictRadarMeasurement_(
+    VectorXd& z_out, MatrixXd& S_out, MatrixXd& Zsig_out);
+
+  void UpdateState_(
+    const VectorXd& z_measure, 
+    const VectorXd& z_pred, 
+    const MatrixXd& Zsig,
+    const MatrixXd& S_pred);
 };
 
 #endif /* UKF_H */
