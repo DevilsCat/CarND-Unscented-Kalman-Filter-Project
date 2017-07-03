@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include "tools.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -67,6 +68,8 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  ///* Provides some tool functions.
+  Tools tools_;
 
   /**
    * Constructor
@@ -102,6 +105,15 @@ public:
    * @param meas_package The measurement at k+1
    */
   void UpdateRadar(MeasurementPackage meas_package);
+
+private:
+  void initializeSigmaPointsWeights_();
+
+  void GenerateAugmentedSigmaPoints_(MatrixXd& Xsig);
+
+  void PredictSigmaPoints_(const MatrixXd& Xsig_aug, const float& delta_t);
+
+  void PredictMeanAndCovirance_();
 };
 
 #endif /* UKF_H */
