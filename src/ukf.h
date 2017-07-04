@@ -68,6 +68,10 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  MatrixXd R_radar_;
+
+  MatrixXd R_laser_;
+
   ///* Provides some tool functions.
   Tools tools_;
 
@@ -115,14 +119,13 @@ private:
 
   void PredictMeanAndCovirance_();
 
-  void PredictRadarMeasurement_(
-    VectorXd& z_out, MatrixXd& S_out, MatrixXd& Zsig_out);
+  void PredictRadarMeasurementSigmaPoints_(const int& n_z, MatrixXd& Zsig_out);
 
   void UpdateState_(
-    const VectorXd& z_measure, 
-    const VectorXd& z_pred, 
+    const MeasurementPackage& meas_package,
     const MatrixXd& Zsig,
-    const MatrixXd& S_pred);
+    const MatrixXd& R,
+    const int& n_z);
 };
 
 #endif /* UKF_H */
