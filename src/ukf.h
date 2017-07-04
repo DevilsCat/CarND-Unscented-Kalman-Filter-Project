@@ -68,8 +68,10 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  ///* Radar covariance matrix
   MatrixXd R_radar_;
 
+  ///* Raser covariance matrix
   MatrixXd R_laser_;
 
   ///* Provides some tool functions.
@@ -111,8 +113,6 @@ public:
   void UpdateRadar(MeasurementPackage meas_package);
 
 private:
-  void initializeSigmaPointsWeights_(const int& n_aug);
-
   void GenerateAugmentedSigmaPoints_(MatrixXd& Xsig);
 
   void PredictSigmaPoints_(const MatrixXd& Xsig_aug, const float& delta_t);

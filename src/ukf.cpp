@@ -51,20 +51,37 @@ UKF::UKF() {
 
   Hint: one or more values initialized above might be wildly off...
   */
+  // Initially set to false, set to true in first call of ProcessMeasurement
   is_initialized_ = false;
-
+  
+  // State dimension
   n_x_ = 5;
+
+  // Augmented state dimension
   n_aug_ = 7;
+
+  // Sigma point spreading parameter
   lambda_ = 3 - n_aug_;
 
+  // Predicted sigma points matrix
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
-  initializeSigmaPointsWeights_(n_aug_);
+  // Weights of sigma points
+  weights_ = VectorXd(2 * n_aug_ + 1);
+  // Set weights.
+  weights_(0) = lambda_ / (lambda_ + n_aug_);
+  for (int i = 1; i < 2 * n_aug_ + 1; ++i) {
+    double weight = 0.5 / (n_aug_ + lambda_);
+    weights_(i) = weight;
+  }
 
+  // Radar covariance matrix
   R_radar_ = MatrixXd(3, 3);
   R_radar_ << std_radr_*std_radr_, 0, 0,
               0, std_radphi_*std_radphi_, 0,
               0, 0, std_radrd_*std_radrd_;
+
+  // Raser covariance matrix            
   R_laser_ = MatrixXd(2, 2);
   R_laser_ << std_laspx_*std_laspx_, 0,
               0, std_laspy_*std_laspy_;
@@ -114,7 +131,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   // Compute the time elapsed between the current and previous measurements
   float delta_t = (meas_package.timestamp_ - time_us_) / 1000000.0;
   time_us_ = meas_package.timestamp_;
-  cout << "delta_t: " << delta_t << endl;
 
   Prediction(delta_t);
 
@@ -128,6 +144,10 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   } else if (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_) {
     UpdateLidar(meas_package);
   }
+
+
+  cout << "x: " << endl << x_ << endl;
+  cout << "P: " << endl << P_ << endl << endl;
 }
 
 /**
@@ -148,32 +168,18 @@ void UKF::Prediction(double delta_t) {
   PredictMeanAndCovirance_();
 }
 
-void UKF::initializeSigmaPointsWeights_(const int& n_aug) {
-  weights_ = VectorXd(2 * n_aug + 1);
-  // Set weights.
-  weights_(0) = lambda_ / (lambda_ + n_aug);
-  for (int i = 1; i < 2 * n_aug + 1; ++i) {
-    double weight = 0.5 / (n_aug + lambda_);
-    weights_(i) = weight;
-  }
-}
-
 void UKF::GenerateAugmentedSigmaPoints_(MatrixXd& Xsig_aug_out) {
-  int nu_a_idx = n_x_;
-  int nu_yawdd_idx = n_x_ + 1;
-
   // Create augmented mean vetor.
   VectorXd x_aug = VectorXd(n_aug_);
+  x_aug.fill(0.0);
   x_aug.head(n_x_) = x_;
-  x_aug(nu_a_idx) = 0;
-  x_aug(nu_yawdd_idx) = 0;
 
   // Create augmented state covariance.
   MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
   P_aug.fill(0.0);
   P_aug.topLeftCorner(n_x_, n_x_) = P_;
-  P_aug(nu_a_idx, nu_a_idx) = std_a_ * std_a_;
-  P_aug(nu_yawdd_idx, nu_yawdd_idx) = std_yawdd_ * std_yawdd_;
+  P_aug(5, 5) = std_a_ * std_a_;
+  P_aug(6, 6) = std_yawdd_ * std_yawdd_;
 
   // Calculate square root of P.
   MatrixXd L = P_aug.llt().matrixL();
@@ -206,15 +212,15 @@ void UKF::PredictSigmaPoints_(const MatrixXd& Xsig_aug, const float& delta_t) {
 
     // Avoid division by zero.
     if (fabs(yawd) > 0.001) {
-      px_p = p_x + v / yawd * (sin(yaw + yaw * delta_t) - sin(yaw));
-      py_p = p_y + v / yawd * (cos(yaw) - cos(yaw + yaw * delta_t));
+      px_p = p_x + v / yawd * (sin(yaw + yawd * delta_t) - sin(yaw));
+      py_p = p_y + v / yawd * (cos(yaw) - cos(yaw + yawd * delta_t));
     } else {
       px_p = p_x + v * delta_t * cos(yaw);
       py_p = p_y + v * delta_t * sin(yaw);
     }
 
     double v_p = v;
-    double yaw_p = yaw + yaw * delta_t;
+    double yaw_p = yaw + yawd * delta_t;
     double yawd_p = yawd;
 
     // Add noise
@@ -236,7 +242,6 @@ void UKF::PredictSigmaPoints_(const MatrixXd& Xsig_aug, const float& delta_t) {
 void UKF::PredictMeanAndCovirance_() {
   // Predict state mean.
   x_ = Xsig_pred_ * weights_;
-  cout << "predicted x_: " << endl << x_ << endl;
 
   // Predict state covirance matrix.
   P_.fill(0.0);
@@ -365,8 +370,4 @@ void UKF::UpdateState_(
   // Update state mean and convariance matrix.
   x_ += K * z_diff;
   P_ -= K * S * K.transpose();
-
-  cout << "K * z_diff: " << endl << K * z_diff << endl; 
-  cout << "x: " << endl << x_ << endl;
-  cout << "P: " << endl << P_ << endl << endl;
 }
