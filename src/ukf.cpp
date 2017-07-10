@@ -24,7 +24,7 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1.5;
+  std_a_ = 0.5;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.57;
@@ -95,11 +95,9 @@ UKF::~UKF() {}
  */
 void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   /**
-  TODO:
-
-  Complete this function! Make sure you switch between lidar and radar
-  measurements.
-  */
+   * Complete this function! Make sure you switch between lidar and radar 
+   * measurements.
+   */
   if (!is_initialized_) {
     // Initialize the state and convariance matrix
     x_ = VectorXd(5);
@@ -115,7 +113,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       px = meas_package.raw_measurements_[0];
       py = meas_package.raw_measurements_[1];
     }
-    x_ << px, py, 0, 0, 0;
+    x_ << px, py, 5.0, 0, 0;
 
     P_ = MatrixXd::Identity(5, 5);
 
