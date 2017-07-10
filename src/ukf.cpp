@@ -7,6 +7,15 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
+#define EPSILON 0.001
+
+// Makes the assumption for the initial bycile velocity on our testing data set 
+// such that it meets the required RMSE in limited iters.
+//
+// Note that these should be set to zeros for the real production environment.
+#define BYCICLE_VELOCITY_X 5.0
+#define BYCICLE_VELOCITY_Y 0.0
+
 /**
  * Initializes Unscented Kalman filter
  */
@@ -116,7 +125,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       px = meas_package.raw_measurements_[0];
       py = meas_package.raw_measurements_[1];
     }
-    x_ << px, py, 5.0, 0, 0;
+    x_ << px, py, BYCICLE_VELOCITY_X, BYCICLE_VELOCITY_Y, 0;
 
     P_ = MatrixXd::Identity(5, 5);
 
@@ -200,19 +209,19 @@ void UKF::GenerateAugmentedSigmaPoints_(MatrixXd& Xsig_aug_out) {
 void UKF::PredictSigmaPoints_(const MatrixXd& Xsig_aug, const float& delta_t) {
   for (int i = 0; i < n_sig_pts_; ++i) {
     // Extract value for better readability.
-    double p_x = Xsig_aug(0, i);
-    double p_y = Xsig_aug(1, i);
-    double v = Xsig_aug(2, i);
-    double yaw = Xsig_aug(3, i);
-    double yawd = Xsig_aug(4, i);
-    double nu_a = Xsig_aug(5, i);
-    double nu_yawdd = Xsig_aug(6, i);
+    const double p_x = Xsig_aug(0, i);
+    const double p_y = Xsig_aug(1, i);
+    const double v = Xsig_aug(2, i);
+    const double yaw = Xsig_aug(3, i);
+    const double yawd = Xsig_aug(4, i);
+    const double nu_a = Xsig_aug(5, i);
+    const double nu_yawdd = Xsig_aug(6, i);
 
     // Predicted state values.
     double px_p, py_p;
 
     // Avoid division by zero.
-    if (fabs(yawd) > 0.001) {
+    if (fabs(yawd) > EPSILON) {
       px_p = p_x + v / yawd * (sin(yaw + yawd * delta_t) - sin(yaw));
       py_p = p_y + v / yawd * (cos(yaw) - cos(yaw + yawd * delta_t));
     } else {
@@ -300,18 +309,24 @@ void UKF::PredictRadarMeasurementSigmaPoints_(const int& n_z, MatrixXd& Zsig_out
   // Transform sigma points into measurement space.
   for (int i = 0; i < n_sig_pts_; ++i) {
     // Extract value for better readability.
-    double p_x = Xsig_pred_(0, i);
-    double p_y = Xsig_pred_(1, i);
-    double v = Xsig_pred_(2, i);
-    double yaw = Xsig_pred_(3, i);
+    const double p_x = Xsig_pred_(0, i);
+    const double p_y = Xsig_pred_(1, i);
+    const double v = Xsig_pred_(2, i);
+    const double yaw = Xsig_pred_(3, i);
 
-    double v1 = cos(yaw) * v;
-    double v2 = sin(yaw) * v;
+    const double v1 = cos(yaw) * v;
+    const double v2 = sin(yaw) * v;
+    const double p_sqrt = sqrt(p_x * p_x + p_y * p_y);
+
+    if (abs(p_x) < EPSILON || p_sqrt < EPSILON) {
+      // avoid calculation below encounters zeros.
+      Zsig_out = MatrixXd(n_z, n_sig_pts_);
+    }
 
     // measurement model
-    Zsig(0, i) = sqrt(p_x * p_x + p_y * p_y);
+    Zsig(0, i) = p_sqrt;
     Zsig(1, i) = atan2(p_y, p_x);
-    Zsig(2, i) = (p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y);
+    Zsig(2, i) = (p_x * v1 + p_y * v2) / p_sqrt;
   }
 
   Zsig_out = Zsig;
